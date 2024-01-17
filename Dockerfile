@@ -536,14 +536,12 @@ RUN \
   meson build --buildtype release && \
   ninja -C build install
 RUN \
-  echo "**** grabbing SVT-AV1 ****" && \
-  mkdir -p /tmp/svt-av1 && \
-  curl -Lf \
-    https://gitlab.com/AOMediaCodec/SVT-AV1/-/archive/v${SVTAV1}/SVT-AV1-v${SVTAV1}.tar.gz | \
-    tar -zx --strip-components=1 -C /tmp/svt-av1
+  echo "**** grabbing SVT-AV1-PSY ****" && \
+  cd /tmp && \
+  git clone https://github.com/gianni-rosato/svt-av1-psy.git
 RUN \
-  echo "**** compiling SVT-AV1 ****" && \
-  cd /tmp/svt-av1/Build && \
+  echo "**** compiling SVT-AV1-PSY ****" && \
+  cd /tmp/svt-av1-psy/Build && \
   cmake .. -G"Unix Makefiles" -DCMAKE_BUILD_TYPE=Release && \
   make && \
   make install
