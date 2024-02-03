@@ -19,13 +19,13 @@ ENV \
   FONTCONFIG=2.14.2 \
   FREETYPE=2.13.2 \
   FRIBIDI=1.0.13 \
-  GMMLIB=22.3.12 \
-  IHD=23.3.5 \
+  GMMLIB=22.3.15 \
+  IHD=23.4.3 \
   KVAZAAR=2.2.0 \
   LAME=3.100 \
   LIBASS=0.17.1 \
   LIBDOVI=2.1.0 \
-  LIBDRM=2.4.119 \
+  LIBDRM=2.4.120 \
   LIBMFX=22.5.4 \
   LIBPLACEBO=6.338.1 \
   LIBVA=2.20.0 \
@@ -33,20 +33,20 @@ ENV \
   LIBVIDSTAB=1.1.1 \
   LIBVMAF=3.0.0 \
   LIBVPL=2.10.1 \
-  MESA=23.3.2 \
+  MESA=24.0.0 \
   NVCODEC=n12.1.14.0 \
   OGG=1.3.5 \
-  ONEVPL=23.3.4 \
+  ONEVPL=23.4.3 \
   OPENCOREAMR=0.1.6 \
   OPENJPEG=2.5.0 \
   OPUS=1.4 \
-  RAV1E=0.7.0 \
-  SHADERC=v2023.7 \
+  RAV1E=0.7.1 \
+  SHADERC=v2023.8 \
   SVTAV1=1.8.0 \
   THEORA=1.1.1 \
   VORBIS=1.3.7 \
-  VPX=1.13.1 \
-  VULKANSDK=vulkan-sdk-1.3.268.0 \
+  VPX=1.14.0 \
+  VULKANSDK=vulkan-sdk-1.3.275.0 \
   WEBP=1.3.2 \
   X265=3.5 \
   XVID=1.3.7
@@ -58,7 +58,6 @@ RUN \
     autoconf \
     automake \
     bzip2 \
-    cargo \
     cmake \
     diffutils \
     doxygen \
@@ -67,6 +66,7 @@ RUN \
     git \
     gperf \
     i965-va-driver-shaders \
+    libasound2-dev \
     libexpat1-dev \
     libgcc-10-dev \
     libgomp1 \
@@ -98,6 +98,13 @@ RUN \
     yasm \
     zlib1g-dev && \
   apt-get build-dep mesa -y && \
+  mkdir -p /tmp/rust && \
+  RUST_VERSION=$(curl -fsX GET https://api.github.com/repos/rust-lang/rust/releases/latest | jq -r '.tag_name') && \
+  curl -fo /tmp/rust.tar.gz -L "https://static.rust-lang.org/dist/rust-${RUST_VERSION}-x86_64-unknown-linux-gnu.tar.gz" && \
+  tar xf /tmp/rust.tar.gz -C /tmp/rust --strip-components=1 && \
+  cd /tmp/rust && \
+  ./install.sh && \
+  cargo install cargo-c && \
   python3 -m venv /lsiopy && \
   pip install -U --no-cache-dir \
     pip \
@@ -312,7 +319,7 @@ RUN \
   meson setup \
     -Dprefix="/usr/local" \
     -Dbuildtype=release \
-    -Dvideo-codecs=h264dec,h264enc,h265dec,h265enc,vc1dec \
+    -Dvideo-codecs=all \
     builddir/ && \
   meson compile -C builddir/ && \
   meson install -C builddir/
@@ -489,7 +496,6 @@ RUN \
 RUN \
   echo "**** compiling rav1e ****" && \
   cd /tmp/rav1e && \
-  cargo install cargo-c@0.9.27+cargo-0.74.0 --locked && \
   cargo cinstall --release && \
   strip -d /usr/local/lib/librav1e.so
 RUN \
@@ -520,7 +526,6 @@ RUN \
 RUN \
   echo "**** compiling libdovi ****" && \
   cd /tmp/libdovi/dolby_vision && \
-  cargo install cargo-c@0.9.27+cargo-0.74.0 --locked && \
   cargo cinstall --release && \
   strip -d /usr/local/lib/libdovi.so
 RUN \
@@ -723,6 +728,7 @@ RUN \
     --disable-debug \
     --disable-doc \
     --disable-ffplay \
+    --enable-alsa \
     --enable-cuvid \
     --enable-ffprobe \
     --enable-gpl \
@@ -842,6 +848,7 @@ RUN \
   echo "**** install runtime ****" && \
     apt-get update && \
     apt-get install -y \
+    libasound2 \
     libedit2 \
     libelf1 \
     libexpat1 \
