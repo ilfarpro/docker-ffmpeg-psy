@@ -13,43 +13,45 @@ ENV \
 
 # versions
 ENV \
-  AOM=v3.8.0 \
+  AOM=v3.8.2 \
   FDKAAC=2.0.3 \
-  FFMPEG_HARD=6.1 \
-  FONTCONFIG=2.14.2 \
+  FFMPEG_HARD=7.0 \
+  FONTCONFIG=2.15.0 \
   FREETYPE=2.13.2 \
   FRIBIDI=1.0.13 \
   GMMLIB=22.3.15 \
+  HARFBUZZ=8.4.0 \
   IHD=23.4.3 \
   KVAZAAR=2.2.0 \
   LAME=3.100 \
   LIBASS=0.17.1 \
-  LIBDOVI=2.1.0 \
+  LIBDOVI=2.1.1 \
   LIBDRM=2.4.120 \
   LIBMFX=22.5.4 \
-  LIBPLACEBO=6.338.1 \
-  LIBVA=2.20.0 \
+  LIBPLACEBO=6.338.2 \
+  LIBVA=2.21.0 \
   LIBVDPAU=1.5 \
   LIBVIDSTAB=1.1.1 \
   LIBVMAF=3.0.0 \
   LIBVPL=2.10.1 \
-  MESA=24.0.0 \
-  NVCODEC=n12.1.14.0 \
+  MESA=24.0.4 \
+  NVCODEC=n12.2.72.0 \
   OGG=1.3.5 \
   ONEVPL=23.4.3 \
   OPENCOREAMR=0.1.6 \
-  OPENJPEG=2.5.0 \
-  OPUS=1.4 \
+  OPENJPEG=2.5.2 \
+  OPUS=1.5.1 \
   RAV1E=0.7.1 \
-  SHADERC=v2023.8 \
-  SVTAV1=1.8.0 \
+  SHADERC=v2024.0 \
+  SVTAV1=2.0.0 \
   THEORA=1.1.1 \
   VORBIS=1.3.7 \
   VPX=1.14.0 \
-  VULKANSDK=vulkan-sdk-1.3.275.0 \
+  VULKANSDK=vulkan-sdk-1.3.280.0 \
   WEBP=1.3.2 \
   X265=3.5 \
-  XVID=1.3.7
+  XVID=1.3.7 \
+  ZIMG=3.0.5
 
 RUN \
   echo "**** install build packages ****" && \
@@ -59,6 +61,7 @@ RUN \
     automake \
     bzip2 \
     cmake \
+    clang \
     diffutils \
     doxygen \
     g++ \
@@ -67,10 +70,11 @@ RUN \
     gperf \
     i965-va-driver-shaders \
     libasound2-dev \
+    libcairo2-dev \
     libexpat1-dev \
     libgcc-10-dev \
+    libglib2.0-dev \
     libgomp1 \
-    libharfbuzz-dev \
     libpciaccess-dev \
     libssl-dev \
     libtool \
@@ -147,7 +151,8 @@ RUN \
     --disable-static \
     --enable-shared && \
   make && \
-  make install
+  make install && \
+  strip -d /usr/local/lib/libfdk-aac.so
 RUN \
   echo "**** grabbing ffnvcodec ****" && \
   mkdir -p /tmp/ffnvcodec && \
@@ -172,7 +177,8 @@ RUN \
     --disable-static \
     --enable-shared && \
   make && \
-  make install
+  make install && \
+  strip -d /usr/local/lib/libfreetype.so
 RUN \
   echo "**** grabbing fontconfig ****" && \
   mkdir -p /tmp/fontconfig && \
@@ -186,7 +192,8 @@ RUN \
     --disable-static \
     --enable-shared && \
   make && \
-  make install 
+  make install && \
+  strip -d /usr/local/lib/libfontconfig.so
 RUN \
   echo "**** grabbing fribidi ****" && \
   mkdir -p /tmp/fribidi && \
@@ -201,7 +208,20 @@ RUN \
     --disable-static \
     --enable-shared && \
   make -j 1 && \
-  make install
+  make install && \
+  strip -d /usr/local/lib/libfribidi.so
+RUN \
+  echo "**** grabbing harfbuzz ****" && \
+  mkdir -p /tmp/harfbuzz && \
+  curl -Lf \
+    https://github.com/harfbuzz/harfbuzz/archive/${HARFBUZZ}.tar.gz | \
+    tar -zx --strip-components=1 -C /tmp/harfbuzz
+RUN \
+  echo "**** compiling harfbuzz ****" && \
+  cd /tmp/harfbuzz && \
+  meson build && \
+  ninja -C build install && \
+  strip -d /usr/local/lib/x86_64-linux-gnu/libharfbuzz*.so
 RUN \
   echo "**** grabbing kvazaar ****" && \
   mkdir -p /tmp/kvazaar && \
@@ -216,7 +236,8 @@ RUN \
     --disable-static \
     --enable-shared && \
   make && \
-  make install
+  make install && \
+  strip -d /usr/local/lib/libkvazaar.so
 RUN \
   echo "**** grabbing lame ****" && \
   mkdir -p /tmp/lame && \
@@ -253,7 +274,8 @@ RUN \
     --disable-static \
     --enable-shared && \
   make && \
-  make install
+  make install && \
+  strip -d /usr/local/lib/libass.so
 RUN \
   echo "**** grabbing libdrm ****" && \
   mkdir -p /tmp/libdrm && \
@@ -451,7 +473,8 @@ RUN \
     --disable-static \
     --enable-shared  && \
   make && \
-  make install
+  make install && \
+  strip -d /usr/local/lib/libopencore-amr*.so
 RUN \
   echo "**** grabbing openjpeg ****" && \
   mkdir -p /tmp/openjpeg && \
@@ -485,7 +508,8 @@ RUN \
     --disable-static \
     --enable-shared && \
   make && \
-  make install
+  make install && \
+  strip -d /usr/local/lib/libopus.so
 RUN \
   echo "**** grabbing rav1e ****" && \
   mkdir -p /tmp/rav1e && \
@@ -666,7 +690,8 @@ RUN \
   cd /tmp/webp && \
   ./configure && \
   make && \
-  make install
+  make install && \
+  strip -d /usr/local/lib/libweb*.so
 RUN \
   echo "**** grabbing x264 ****" && \
   mkdir -p /tmp/x264 && \
@@ -706,6 +731,22 @@ RUN \
   ./configure && \ 
   make && \
   make install
+RUN \
+  echo "**** grabbing zimg ****" && \
+  mkdir -p /tmp/zimg && \
+  git clone \
+    --branch release-${ZIMG} --depth 1 \
+    https://github.com/sekrit-twc/zimg.git \
+    /tmp/zimg
+RUN \
+  echo "**** compiling zimg ****" && \
+  cd /tmp/zimg && \
+  ./autogen.sh && \
+  ./configure \
+    --disable-static \
+    --enable-shared && \
+  make && \
+  make install
 
 # main ffmpeg build
 RUN \
@@ -735,7 +776,10 @@ RUN \
     --enable-libaom \
     --enable-libass \
     --enable-libfdk_aac \
+    --enable-libfontconfig \
     --enable-libfreetype \
+    --enable-libfribidi \
+    --enable-libharfbuzz \
     --enable-libkvazaar \
     --enable-libmp3lame \
     --enable-libopencore-amrnb \
@@ -758,9 +802,11 @@ RUN \
     --enable-libx265 \
     --enable-libxml2 \
     --enable-libxvid \
+    --enable-libzimg \
     --enable-nonfree \
     --enable-nvdec \
     --enable-nvenc \
+    --enable-cuda-llvm \
     --enable-opencl \
     --enable-openssl \
     --enable-stripping \
@@ -772,15 +818,18 @@ RUN \
 
 RUN \
   echo "**** arrange files ****" && \
+  /usr/local/lib/rustlib/uninstall.sh && \
   ldconfig && \
   mkdir -p \
     /buildout/usr/local/bin \
+    /buildout/usr/local/etc/fonts \
     /buildout/usr/local/lib/libmfx-gen \
     /buildout/usr/local/lib/mfx \
     /buildout/usr/local/lib/vpl \
     /buildout/usr/local/lib/x86_64-linux-gnu/dri \
     /buildout/usr/local/lib/x86_64-linux-gnu/vdpau \
     /buildout/usr/local/share/vulkan \
+    /buildout/usr/share/fonts \
     /buildout/usr/share/libdrm \
     /buildout/etc/OpenCL/vendors && \
   cp \
@@ -789,6 +838,9 @@ RUN \
   cp \
     /tmp/ffmpeg/ffprobe \
     /buildout/usr/local/bin && \
+  cp -a \
+    /usr/local/etc/fonts/* \
+    /buildout/usr/local/etc/fonts/ && \
   cp -a \
     /usr/local/lib/lib*so* \
     /buildout/usr/local/lib/ && \
@@ -816,6 +868,9 @@ RUN \
   cp -a \
     /usr/share/libdrm/amdgpu.ids \
     /buildout/usr/share/libdrm/ && \
+  cp -a \
+    /usr/share/fonts/* \
+    /buildout/usr/share/fonts/ && \
   cp -a \
     /usr/local/share/vulkan/* \
     /buildout/usr/local/share/vulkan/ && \
@@ -854,7 +909,6 @@ RUN \
     libexpat1 \
     libglib2.0-0 \
     libgomp1 \
-    libharfbuzz0b \
     libllvm15 \
     libmpdec3 \
     libpciaccess0 \
@@ -879,7 +933,10 @@ RUN \
   echo "**** clean up ****" && \
   rm -rf \
     /var/lib/apt/lists/* \
-    /var/tmp/*
+    /var/tmp/* && \
+  echo "**** quick test ffmpeg ****" && \
+  ldd /usr/local/bin/ffmpeg && \
+  /usr/local/bin/ffmpeg -version
 
 COPY /root /
 

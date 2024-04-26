@@ -177,6 +177,13 @@ full_custom_readme: |
 
   ## Versions
 
+  * **11.04.24:** - Explicitly disable libdrm on aarch64, add new lib `libxcb-shm0`. Add quick test at the end of build.
+  * **10.04.24:** - Compile ffmpeg with `libfribidi`, `libharfbuzz` and `libfontconfig`, compile libharfbuzz.
+  * **05.04.24:** - Bump ffmpeg to 7.0, bump libdovi, libva, mesa and vulkan-sdk.
+  * **16.03.24:** - Bump libaom, mesa, openjpeg, opus, shaderc and svtav1.
+  * **11.02.24:** - Add Zimg support.
+  * **09.02.24:** - Bump ffmpeg to 6.1.1, bump other deps.
+  * **08.02.24:** - Enable cuda-llvm, clean up rustc.
   * **01.02.24:** - Bump Mesa to v24.
   * **21.01.24:** - Add alsa support.
   * **18.01.24:** - Let the wrapper pass the ffmpeg exit code to docker run. Bump various libs.
