@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1
 
 # build stage
-FROM ghcr.io/linuxserver/baseimage-ubuntu:jammy as buildstage
+FROM ghcr.io/linuxserver/baseimage-ubuntu:noble as buildstage
 
 # set version label
 ARG FFMPEG_VERSION
@@ -9,24 +9,26 @@ ARG FFMPEG_VERSION
 # common env
 ENV \
   DEBIAN_FRONTEND="noninteractive" \
-  MAKEFLAGS="-j4"
+  MAKEFLAGS="-j4" \
+  PATH="/root/.cargo/bin:${PATH}"
 
 # versions
 ENV \
-  AOM=v3.9.0 \
+  AOM=v3.9.1 \
   FDKAAC=2.0.3 \
-  FFMPEG_HARD=7.0 \
+  FFMPEG_HARD=7.0.1 \
   FONTCONFIG=2.15.0 \
   FREETYPE=2.13.2 \
-  FRIBIDI=1.0.14 \
+  FRIBIDI=1.0.15 \
   GMMLIB=22.3.18 \
-  HARFBUZZ=8.4.0 \
+  HARFBUZZ=8.5.0 \
   IHD=24.1.5 \
   KVAZAAR=2.3.1 \
   LAME=3.100 \
-  LIBASS=0.17.1 \
+  LIBASS=0.17.2 \
   LIBDOVI=2.1.1 \
-  LIBDRM=2.4.120 \
+  LIBDRM=2.4.121 \
+  LIBGL=1.7.0 \
   LIBMFX=22.5.4 \
   LIBPLACEBO=6.338.2 \
   LIBPNG=1.6.43 \
@@ -35,7 +37,7 @@ ENV \
   LIBVIDSTAB=1.1.1 \
   LIBVMAF=3.0.0 \
   LIBVPL=2.11.0 \
-  MESA=24.0.7 \
+  MESA=24.1.2 \
   NVCODEC=n12.2.72.0 \
   OGG=1.3.5 \
   OPENCOREAMR=0.1.6 \
@@ -43,12 +45,12 @@ ENV \
   OPUS=1.5.2 \
   RAV1E=0.7.1 \
   SHADERC=v2024.1 \
-  SVTAV1=2.0.0 \
+  SVTAV1=2.1.0 \
   THEORA=1.1.1 \
   VORBIS=1.3.7 \
   VPLGPURT=24.1.5 \
-  VPX=1.14.0 \
-  VULKANSDK=vulkan-sdk-1.3.280.0 \
+  VPX=1.14.1 \
+  VULKANSDK=vulkan-sdk-1.3.283.0 \
   WEBP=1.4.0 \
   X265=3.6 \
   XVID=1.3.7 \
@@ -56,15 +58,19 @@ ENV \
 
 RUN \
   echo "**** install build packages ****" && \
-  apt-get update && \ 
-  apt-get install -y \
+  apt-get update && \
+  apt-get install --no-install-recommends -y \
     autoconf \
     automake \
+    bindgen \
+    bison \
+    build-essential \
     bzip2 \
     cmake \
     clang \
     diffutils \
     doxygen \
+    flex \
     g++ \
     gcc \
     git \
@@ -72,50 +78,60 @@ RUN \
     i965-va-driver-shaders \
     libasound2-dev \
     libcairo2-dev \
+    libclang-18-dev \
+    libclang-cpp18-dev \
+    libclc-18 \
+    libclc-18-dev \
+    libelf-dev \
     libexpat1-dev \
     libgcc-10-dev \
     libglib2.0-dev \
     libgomp1 \
+    libllvmspirvlib-18-dev \
     libpciaccess-dev \
     libssl-dev \
     libtool \
     libv4l-dev \
     libwayland-dev \
+    libwayland-egl-backend-dev \
     libx11-dev \
     libx11-xcb-dev \
+    libxcb-dri2-0-dev \
     libxcb-dri3-dev \
+    libxcb-glx0-dev \
     libxcb-present-dev \
     libxext-dev \
     libxfixes-dev \
     libxml2-dev \
     libxrandr-dev \
+    libxshmfence-dev \
+    libxxf86vm-dev \
+    llvm-18-dev \
+    llvm-spirv-18 \
     make \
     nasm \
-    ninja-build \
     ocl-icd-opencl-dev \
     perl \
     pkg-config \
     python3-venv \
-    wayland-protocols \
+    x11proto-gl-dev \
     x11proto-xext-dev \
-    xserver-xorg-dev \
     xxd \
     yasm \
     zlib1g-dev && \
-  apt-get build-dep mesa -y && \
   mkdir -p /tmp/rust && \
   RUST_VERSION=$(curl -fsX GET https://api.github.com/repos/rust-lang/rust/releases/latest | jq -r '.tag_name') && \
   curl -fo /tmp/rust.tar.gz -L "https://static.rust-lang.org/dist/rust-${RUST_VERSION}-x86_64-unknown-linux-gnu.tar.gz" && \
   tar xf /tmp/rust.tar.gz -C /tmp/rust --strip-components=1 && \
   cd /tmp/rust && \
   ./install.sh && \
-  cargo install cargo-c && \
+  cargo install cargo-c cbindgen && \
   python3 -m venv /lsiopy && \
   pip install -U --no-cache-dir \
     pip \
     setuptools \
     wheel && \
-  pip install --no-cache-dir meson cmake mako
+  pip install --no-cache-dir cmake mako meson ninja ply
 
 # compile 3rd party libs
 RUN \
@@ -278,6 +294,27 @@ RUN \
   make install && \
   strip -d /usr/local/lib/libass.so
 RUN \
+  echo "**** grabbing libgl ****" && \
+  mkdir -p /tmp/libgl && \
+  curl -Lf \
+  https://gitlab.freedesktop.org/glvnd/libglvnd/-/archive/v${LIBGL}/libglvnd-v${LIBGL}.tar.gz | \
+    tar -xz --strip-components=1 -C /tmp/libgl
+RUN \
+  echo "**** compiling libgl ****" && \
+  cd /tmp/libgl && \
+  meson setup \
+    --buildtype=release \
+    build && \
+  ninja -C build install && \
+  strip -d \
+    /usr/local/lib/x86_64-linux-gnu/libEGL.so \
+    /usr/local/lib/x86_64-linux-gnu/libGLdispatch.so \
+    /usr/local/lib/x86_64-linux-gnu/libGLESv1_CM.so \
+    /usr/local/lib/x86_64-linux-gnu/libGLESv2.so \
+    /usr/local/lib/x86_64-linux-gnu/libGL.so \
+    /usr/local/lib/x86_64-linux-gnu/libGLX.so \
+    /usr/local/lib/x86_64-linux-gnu/libOpenGL.so
+RUN \
   echo "**** grabbing libdrm ****" && \
   mkdir -p /tmp/libdrm && \
   curl -Lf \
@@ -330,6 +367,24 @@ RUN \
     build && \
   ninja -C build install && \
   strip -d /usr/local/lib/libvdpau.so
+  RUN \
+    echo "**** grabbing shaderc ****" && \
+    mkdir -p /tmp/shaderc && \
+    git clone \
+      --branch ${SHADERC} \
+      --depth 1 https://github.com/google/shaderc.git \
+      /tmp/shaderc
+  RUN \
+    echo "**** compiling shaderc ****" && \
+    cd /tmp/shaderc && \
+    ./utils/git-sync-deps && \
+    mkdir -p build && \
+    cd build && \
+    cmake -GNinja \
+      -DCMAKE_BUILD_TYPE=Release \
+      -DCMAKE_INSTALL_PREFIX=/usr/local \
+      .. && \
+    ninja install
 RUN \
   echo "**** grabbing mesa ****" && \
   mkdir -p /tmp/mesa && \
@@ -522,25 +577,7 @@ RUN \
   echo "**** compiling rav1e ****" && \
   cd /tmp/rav1e && \
   cargo cinstall --release && \
-  strip -d /usr/local/lib/librav1e.so
-RUN \
-  echo "**** grabbing shaderc ****" && \
-  mkdir -p /tmp/shaderc && \
-  git clone \
-    --branch ${SHADERC} \
-    --depth 1 https://github.com/google/shaderc.git \
-    /tmp/shaderc
-RUN \
-  echo "**** compiling shaderc ****" && \
-  cd /tmp/shaderc && \
-  ./utils/git-sync-deps && \
-  mkdir -p build && \
-  cd build && \
-  cmake -GNinja \
-    -DCMAKE_BUILD_TYPE=Release \
-    -DCMAKE_INSTALL_PREFIX=/usr/local \
-    .. && \
-  ninja install
+  strip -d /usr/local/lib/x86_64-linux-gnu/librav1e.so
 RUN \
   echo "**** grabbing libdovi ****" && \
   mkdir -p /tmp/libdovi && \
@@ -552,7 +589,7 @@ RUN \
   echo "**** compiling libdovi ****" && \
   cd /tmp/libdovi/dolby_vision && \
   cargo cinstall --release && \
-  strip -d /usr/local/lib/libdovi.so
+  strip -d /usr/local/lib/x86_64-linux-gnu/libdovi.so
 RUN \
   echo "**** grabbing libplacebo ****" && \
   mkdir -p /tmp/libplacebo && \
@@ -876,7 +913,7 @@ RUN \
     /buildout/etc/OpenCL/vendors/nvidia.icd
 
 # runtime stage
-FROM ghcr.io/linuxserver/baseimage-ubuntu:jammy
+FROM ghcr.io/linuxserver/baseimage-ubuntu:noble
 
 # Add files from binstage
 COPY --from=buildstage /buildout/ /
@@ -900,14 +937,13 @@ RUN \
   echo "**** install runtime ****" && \
     apt-get update && \
     apt-get install -y \
-    libasound2 \
+    libasound2t64 \
     libedit2 \
     libelf1 \
     libexpat1 \
     libglib2.0-0 \
     libgomp1 \
-    libllvm15 \
-    libmpdec3 \
+    libllvm18 \
     libpciaccess0 \
     libv4l-0 \
     libwayland-client0 \
